@@ -1,4 +1,4 @@
-package com.chewbaccarspock.awslambdas.poc.java.basic;
+package com.infarmbureau.ea.aws.lambda.poc.java.basic;
 
 import com.amazonaws.services.lambda.runtime.Context;
 import com.amazonaws.services.lambda.runtime.RequestHandler;
@@ -18,8 +18,8 @@ import java.nio.ByteBuffer;
 
 public class S3FileCopyHandler implements RequestHandler<S3Event, String> {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(PolicyPurchaseProcessor.class);
-    private static final String DESTINATION_BUCKET = "chewbaccar-spock-s3-write-bucket-for-serverless-poc"; // Replace with your destination bucket
+    private static final Logger LOGGER = LoggerFactory.getLogger(S3FileCopyHandler.class);
+    private static final String DESTINATION_BUCKET = "s3-target-for-basic-s3-to-s3-trigger-function-vanilla-java";
 
     private final S3Client s3Client;
     private final ObjectMapper objectMapper;

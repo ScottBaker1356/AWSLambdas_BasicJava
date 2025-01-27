@@ -1,4 +1,4 @@
-package com.chewbaccarspock.awslambdas.poc.java.basic;
+package com.infarmbureau.ea.aws.lambda.poc.java.basic;
 
 import com.amazonaws.services.lambda.runtime.Context;
 import com.amazonaws.services.lambda.runtime.RequestHandler;
@@ -10,7 +10,7 @@ import org.slf4j.LoggerFactory;
 
 public class S3TriggerEventHandler implements RequestHandler<S3Event, String> {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(PolicyPurchaseProcessor.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(S3TriggerEventHandler.class);
 
     private static final ObjectMapper objectMapper = new ObjectMapper()
             .registerModule(new com.fasterxml.jackson.datatype.joda.JodaModule());

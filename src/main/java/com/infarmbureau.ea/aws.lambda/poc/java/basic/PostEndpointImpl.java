@@ -1,15 +1,12 @@
-package com.chewbaccarspock.awslambdas.poc.java.basic;
+package com.infarmbureau.ea.aws.lambda.poc.java.basic;
 
 import com.amazonaws.services.lambda.runtime.Context;
 import com.amazonaws.services.lambda.runtime.RequestHandler;
-import com.amazonaws.services.lambda.runtime.events.SNSEvent;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
-import software.amazon.awssdk.services.sqs.SqsClient;
-import software.amazon.awssdk.services.sqs.model.SendMessageRequest;
 
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
@@ -18,24 +15,19 @@ import javax.xml.transform.TransformerFactory;
 import javax.xml.transform.dom.DOMSource;
 import javax.xml.transform.stream.StreamResult;
 import java.io.StringWriter;
+import java.util.Map;
 
-public class PolicyPurchaseProcessor implements RequestHandler<SNSEvent, Void> {
+public class PostEndpointImpl  implements RequestHandler<Map<String, Object>, String> {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(PolicyPurchaseProcessor.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(PostEndpointImpl.class);
 
-    private static final String SQS_QUEUE_URL = "https://sqs.us-east-2.amazonaws.com/034362039231/private_passenger_auto_policy_quote_submission_queue_java";
-    private final SqsClient sqsClient;
     private final ObjectMapper objectMapper;
     private final Transformer transformer;
     private final DocumentBuilder docBuilder;
 
-    public PolicyPurchaseProcessor() {
+    public PostEndpointImpl() {
 
         try {
-
-            LOGGER.debug("Preparing to initialize SqsClient");
-            sqsClient = SqsClient.builder().build();
-            LOGGER.debug("Initialized SqsClient");
 
             LOGGER.debug("Preparing to initialize ObjectMapper");
             objectMapper = new ObjectMapper()
@@ -57,39 +49,39 @@ public class PolicyPurchaseProcessor implements RequestHandler<SNSEvent, Void> {
     }
 
     @Override
-    public Void handleRequest(SNSEvent event, Context context) {
+    public String handleRequest(Map<String, Object> input, Context context) {
 
-        long startTime = System.currentTimeMillis();
+        // Log the incoming request for debugging
+        LOGGER.debug("Input: " + input);
 
-        for (SNSEvent.SNSRecord record : event.getRecords()) {
-            String snsMessage = record.getSNS().getMessage();
-            LOGGER.debug("JSON Message: {}", snsMessage);
-
-            try {
-                LOGGER.debug("Preparing to parse JSON");
-                PolicyPurchase policyPurchase = parseJsonToPolicyPurchase(snsMessage);
-                LOGGER.debug("Parsed JSON");
-
-                if (isPrivatePassengerVehicle(policyPurchase)) {
-                    LOGGER.debug("Preparing to transform to XML");
-                    String xmlMessage = transformToXml(policyPurchase);
-                    LOGGER.debug("Transformed to XML; XML Message: {}", xmlMessage);
-
-                    LOGGER.debug("Preparing to publish to SQS queue");
-                    publishToSQS(xmlMessage);
-                    LOGGER.debug("Published to SQS queue");
-                } else {
-                    LOGGER.debug("Skipping non-private passenger vehicle message.");
-                }
-            } catch (Exception e) {
-                LOGGER.debug("Error processing message: {}", e.getMessage());
-                // Optionally handle invalid messages or send them to another SNS topic
-            } finally {
-                long endTime = System.currentTimeMillis();
-                LOGGER.debug("Execution time: {}ms", endTime - startTime);
+        try {
+            // Extract the HTTP body
+            String body = (String) input.get("body");
+            if (body == null || body.isEmpty()) {
+                return generateResponse(400, "Invalid request: body is required");
             }
+
+            // Transform to XML
+            LOGGER.debug("Preparing to parse JSON");
+            PolicyPurchase policyPurchase = parseJsonToPolicyPurchase(body);
+            LOGGER.debug("Parsed JSON");
+
+            if (isPrivatePassengerVehicle(policyPurchase)) {
+                LOGGER.debug("Preparing to transform to XML");
+                String xmlMessage = transformToXml(policyPurchase);
+                LOGGER.debug("Transformed to XML; XML Message: {}", xmlMessage);
+
+                // Handle specific logic here (e.g., based on request path or body content)
+                String responseMessage = "Processed successfully!";
+
+                return generateResponse(200, responseMessage);
+
+            }
+            return generateResponse(400, "Invalid request: unsupported vehicle type");
+        } catch (Exception e) {
+            e.printStackTrace();
+            return generateResponse(500, "Server error: " + e.getMessage());
         }
-        return null;
     }
 
     private PolicyPurchase parseJsonToPolicyPurchase(String json) throws Exception {
@@ -143,14 +135,11 @@ public class PolicyPurchaseProcessor implements RequestHandler<SNSEvent, Void> {
         return writer.toString();
     }
 
-    private void publishToSQS(String message) {
-        // Send the message to the SQS queue
-        SendMessageRequest sendMessageRequest = SendMessageRequest.builder()
-                .queueUrl(SQS_QUEUE_URL)
-                .messageBody(message)
-                .build();
-
-        sqsClient.sendMessage(sendMessageRequest);
+    private String generateResponse ( int statusCode, String message){
+        return String.format(
+                "{ \"statusCode\": %d, \"body\": \"%s\" }",
+                statusCode, message.replace("\"", "\\\"")
+        );
     }
 
     // Nested Policyholder Class
